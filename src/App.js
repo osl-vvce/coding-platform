@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Timer from './Timer';
 import { UnControlled as CodeMirror } from 'react-codemirror2';
 import 'codemirror/lib/codemirror.css';
 import 'codemirror/mode/javascript/javascript';
@@ -6,7 +7,22 @@ import 'codemirror/mode/python/python';
 import 'codemirror/mode/clike/clike';
 import detectDevTools from 'devtools-detect';
 import './App.css';
-import Timer from './Timer';
+function EmptyState({ title, message, action, onAction }) {
+  return (
+    <div className="empty-state">
+      <div className="empty-state-icon" aria-hidden="true">
+        {action ? '📝' : '📭'}
+      </div>
+      <h3>{title}</h3>
+      <p>{message}</p>
+      {action && (
+        <button type="button" onClick={onAction}>
+          {action}
+        </button>
+      )}
+    </div>
+  );
+}
 
 function App() {
   const [currentView, setCurrentView] = useState('home');
@@ -19,6 +35,7 @@ function twoSum(nums, target) {
 }`);
   const [language, setLanguage] = useState('javascript');
   const [output, setOutput] = useState('');
+  const [isRunning, setIsRunning] = useState(false);
   const [currentProblem, setCurrentProblem] = useState(0);
   const [submissions, setSubmissions] = useState({});
   const problems = [
@@ -223,6 +240,7 @@ public:
 
   // Update runCode function to use dynamic base URL
   const runCode = async () => {
+    setIsRunning(true);
     try {
       const funcName = (function extractFuncName(code, language) {
         try {
@@ -281,11 +299,14 @@ public:
       }
     } catch (error) {
       setOutput(`Error: ${error.message}`);
+    } finally {
+      setIsRunning(false);
     }
   };
 
   // Update submitCode function to use dynamic base URL
   const submitCode = async () => {
+    setIsRunning(true);
     setOutput('Submitting...');
     const buildTests = () => {
       const tests = [];
@@ -384,6 +405,8 @@ public:
       }
     } catch (e) {
       setOutput(`Network/submit error: ${e.message}`);
+    } finally {
+      setIsRunning(false);
     }
   };
 
@@ -417,12 +440,21 @@ public:
         )}
         {currentView === 'contests' && (
           <section className="contests">
-            <h2>Available Contests</h2>
-            <ul>
-              <li onClick={() => setCurrentView('problems')}>Sample Contest 1</li>
-              <li>Sample Contest 2 (Coming Soon)</li>
-            </ul>
-          </section>
+  <h2>Available Contests</h2>
+  <ul>
+    <li onClick={() => setCurrentView('problems')}>
+      Sample Contest 1
+    </li>
+    <li>Sample Contest 2 (Coming Soon)</li>
+  </ul>
+  <EmptyState
+    title="More contests coming soon"
+    message="We're working on adding more coding challenges. Start practising with the available problems in the meantime."
+    action="Browse problems"
+    onAction={() => setCurrentView('problems')}
+  />
+
+</section>
         )}
         {currentView === 'problems' && (
           <section className="problems">
@@ -506,9 +538,19 @@ public:
                       }
                     }}
                   />
-                  <div className="output">
+                  <div className="output" aria-busy={isRunning}>
                     <h3>Output:</h3>
-                    <pre>{output}</pre>
+                    {isRunning ? (
+                      <div className="loading-skeleton" role="status" aria-label="Running code">
+                        <span className="skeleton-line skeleton-line-short" />
+                        <span className="skeleton-line" />
+                        <span className="skeleton-line" />
+                        <span className="skeleton-line skeleton-line-medium" />
+                        <span className="loading-message">Running your code…</span>
+                      </div>
+                    ) : (
+                      <pre>{output}</pre>
+                    )}
                   </div>
                 </div>
                 <div className="test-cases-section">
@@ -544,7 +586,12 @@ public:
           <section className="submissions">
             <h2>My Submissions</h2>
             {Object.keys(submissions).length === 0 ? (
-              <p>No submissions yet.</p>
+              <EmptyState
+  title="No submissions yet"
+  message="Your submitted solutions will appear here. Solve a problem and submit your code to get started."
+  action="Explore problems"
+  onAction={() => setCurrentView('problems')}
+/>
             ) : (
               <ul>
                 {Object.entries(submissions).map(([idx, sub]) => (
